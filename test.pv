@@ -1,0 +1,186 @@
+(* ============== Declarations ============== *)
+
+(*--Types--*)
+type host.
+type Ulat.
+type Ulon.
+type Ualt.
+type Uspd.
+type Ucog.
+type Olat.
+type Olon.
+type Oalt.
+type ts.
+type nonce.
+
+(* EC-Schnorr Keys*)
+type pkey.
+type skey.
+
+(* Symmetric Key type *)
+type sskey.
+
+(*--Communication Channels--*)
+free dr:channel.              (*Public Channel between a UAV and a generic receiver*)
+free da:channel [private].    (*--Private Channel between UAV A and the authority Auth--*)
+
+free MaS:bitstring[private].  (* Authority Master Secret Key *)
+free MaP:bitstring.           (* Authority Master Public Key *)
+
+(* UAV Information *)
+free id: bitstring.
+free pA:pkey.
+(* Operator Location Information *)
+free latO: Olat [private].
+free lonO: Olon [private].
+free altO: Oalt [private].
+
+(* Generic Receiver *)
+free idr: bitstring.
+free pR:pkey.
+
+(*--Hosts--*)
+free uav,rec,authority: host.
+
+(* Auxiliary Functions *)
+fun pk(skey): pkey.
+
+(* Hashing and KDF Function *)
+fun hash(bitstring):bitstring.
+fun kdf(nonce):sskey.
+
+(* Symmetric encryption *)
+fun senc (bitstring, sskey):bitstring.
+reduc forall m:bitstring, k:sskey; sdec(senc(m,k),k) = m.
+
+(*--Digital Signatures--*)
+fun sign(bitstring, skey): bitstring.
+reduc forall m: bitstring, k: skey; getmess(sign(m, k)) = m.
+reduc forall m: bitstring, k: skey; checksign(sign(m, k), pk(k)) = m.
+
+(* CP-ABE Primitives *)
+type cpabe_att_skey.
+type cpabe_policy.
+
+
+fun cpabe_keygen(bitstring, bitstring, bitstring):cpabe_att_skey.
+fun cpabe_gen_policy(bitstring):cpabe_policy.
+fun cpabe_encrypt(bitstring, nonce, cpabe_policy):bitstring.
+fun cpabe_decrypt(bitstring, bitstring, cpabe_att_skey): nonce.
+
+(*--Check timestamp freshness operation--*)
+fun freshness(ts, bool): bool
+reduc forall T: ts; freshness(T, true) = true
+otherwise forall T: ts; freshness(T, false) = false.
+
+(* ============== Events ============== *)
+event acceptUAV(bitstring).
+event termAuth(bitstring).
+
+
+(* ============== Queries ============== *)
+
+(* Authentication *)
+query id: bitstring; event(termAuth(id)) ==> event(acceptUAV(id)).
+
+(* Test if latO,lonO and altO is secret *)
+query attacker(latO).
+query attacker(lonO).
+query attacker(altO).
+
+(* ============== Protocol ============== *)
+
+(* The UAV *)
+let uavA (skA:skey) = 
+  (*UAV Registration*)
+  out(da, (id, pA));
+  in(da, (attr_sk:cpabe_att_skey,PAuth:pkey));
+  new r: nonce;
+  new pl: bitstring; (* String Policy *)
+  let policy = cpabe_gen_policy(pl) in
+  let c = cpabe_encrypt(MaP, r, policy) in
+  let kt = kdf(r) in
+
+  (* Acquire Location Information *)
+  (* UAV Location and Speed Information *)
+  new latA: Ulat;
+  new lonA: Ulon;
+  new altA: Ualt;
+  new spdA: Uspd;
+  
+  
+  new tA: ts;
+  new ec: bitstring;
+  new vA: nonce;
+
+  let Ct = senc((latO,lonO,altO), kt) in
+   
+  let sig = sign((c, id, latA, lonA, altA, spdA, Ct, tA, ec), skA) in
+
+  event acceptUAV(id);
+  
+  out(dr, (((c, id, latA, lonA, altA, spdA, Ct, tA, ec), sig), freshness(tA, true))).
+
+(* Generic Receiver *)
+let receiver (skR:skey) = 
+  out(da, (idr, pR));
+  in(da, (attr_skr:cpabe_att_skey, PAuth:pkey));
+  
+  in(dr, (((cAr:bitstring, idAr:bitstring, latAr:Ulat ,lonAr: Ulon, altAr: Ualt, spdAr:Uspd, Ctr:bitstring, tAr:ts, ecr:bitstring), sigr:bitstring), checkT:bool));
+
+  if checkT = true then
+  let sigA = checksign(sigr, pA) in
+  (
+    let rdec = cpabe_decrypt(MaP, cAr, attr_skr) in
+    let ktr = kdf(rdec) in
+    let (latOr:Olat, lonOr:Olon, altOr:Oalt)     = sdec(Ctr, ktr) in
+    
+    if ((latOr = latO) && (lonOr = lonO) && (altOr = altO)) then
+    
+    event termAuth(id)
+  ) else (
+    0
+  ).
+  
+
+(* Authority*)
+let auth (pAuth:skey) = 
+  
+  (*UAV Registration*)
+  in(da, ((id:bitstring, pba:pkey)));
+  in(dr, ((id:bitstring, pbr:pkey)));
+  
+  (* UAV/Receiver attributes *)
+  new attrs: bitstring;
+  
+  let att_skeyU = cpabe_keygen(MaS, MaP, attrs) in
+  let att_skeyR = cpabe_keygen(MaS, MaP, attrs) in
+
+  out(da, (att_skeyU, MaP));
+  out(dr, (att_skeyR, MaP)).
+
+let proto =
+  ! new pAuth: skey;
+  ! new pA: skey;
+  ! new pR: skey;
+  
+  ! let PAuth = pk(pAuth) in
+  ! let PA = pk(pA) in
+  ! let PR = pk(pR) in
+  
+  ! (uavA(pA) | receiver(pR) | auth(pAuth)).
+  
+process proto
+
+(* --------------------------------------------------------------
+Verification summary:
+
+Query event(termAuth(id_3)) ==> event(acceptUAV(id_3)) is true.
+
+Query not attacker(latO[]) is true.
+
+Query not attacker(lonO[]) is true.
+
+Query not attacker(altO[]) is true.
+
+-------------------------------------------------------------- *)
