@@ -1,3 +1,12 @@
+(*
+| Contribution: SNELL: Selective Authenticated Pilot Location Disclosure for Remote ID-enabled Drones
+| We would like to credit also: "FABEO: Fast Attribute-Based Encryption with Optimal Security"
+
+:Authors:         Anonymous Authors
+:Date:            05/2023
+:Conference:      ACSAC 2023
+*)
+
 (* ============== Declarations ============== *)
 
 (*--Types--*)
@@ -159,7 +168,7 @@ let auth (pAuth:skey) =
   out(da, (att_skeyU, MaP));
   out(dr, (att_skeyR, MaP)).
 
-let proto =
+let snell =
   ! new pAuth: skey;
   ! new pA: skey;
   ! new pR: skey;
@@ -170,12 +179,12 @@ let proto =
   
   ! (uavA(pA) | receiver(pR) | auth(pAuth)).
   
-process proto
+process snell
 
 (* --------------------------------------------------------------
 Verification summary:
 
-Query event(termAuth(id_3)) ==> event(acceptUAV(id_3)) is true.
+Query event(termUAV(id_3)) ==> event(acceptUAV(id_3)) is true.
 
 Query not attacker(latO[]) is true.
 
