@@ -75,13 +75,13 @@ otherwise forall T: ts; freshness(T, false) = false.
 
 (* ============== Events ============== *)
 event acceptUAV(bitstring).
-event termAuth(bitstring).
+event termUAV(bitstring).
 
 
 (* ============== Queries ============== *)
 
 (* Authentication *)
-query id: bitstring; event(termAuth(id)) ==> event(acceptUAV(id)).
+query id: bitstring; event(termUAV(id)) ==> event(acceptUAV(id)).
 
 (* Test if latO,lonO and altO is secret *)
 query attacker(latO).
@@ -137,7 +137,7 @@ let receiver (skR:skey) =
     
     if ((latOr = latO) && (lonOr = lonO) && (altOr = altO)) then
     
-    event termAuth(id)
+    event termUAV(id)
   ) else (
     0
   ).
