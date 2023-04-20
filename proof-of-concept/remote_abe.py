@@ -1,5 +1,5 @@
 '''
-| From: Selective Authenticated Pilot Location Disclosure for Remote ID-enabled Drones
+| From: SNELL: Selective Authenticated Pilot Location Disclosure for Remote ID-enabled Drones
 | We would like to credit also: "FABEO: Fast Attribute-Based Encryption with Optimal Security"
 
 :Authors:         Anonymous Authors
