@@ -24,6 +24,13 @@ _Software Requirements_
 - [Python3.7](https://www.python.org/)
 
 ### How to Compile and Run
+
+### Python3 Requirements
+The ```requirements.txt``` lists all Python3 libraries that you should install to run this project:
+
+```pip3 install -r requirements.txt
+```
+
 To execute ```SNELL```, you should download the script ```remote_abe.py``` from the ```proof-of-concept``` folder, and use the following syntax:
 
 ```
