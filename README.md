@@ -6,6 +6,36 @@ Remote Identification (RID) regulations recently emitted throughout the world ar
 
 The contribution is submitted to The Annual Computer Security Applications Conference (ACSAC) 2023.
 
+### Prerequisites
+
+_Hardware Requirements_
+
+- A programmable drone with a GNU/Linux embedded operating system, or a Raspberry Pi 4
+- AWUS036ACH - USB Type-C dual-band AC1200 WiFi adapter (1 for the Generic Receiver, 1 for the Transmitter, 1 for the Authority) if you want broadcast the messages
+
+_Software Requirements_
+
+- A laptop with a distro GNU/Linux (e.g. [Ubuntu](https://ubuntu.com/))
+- [Wireshark](https://www.wireshark.org/)
+- [scapy](https://www.wireshark.org/](https://scapy.net/))
+- [VSC](https://code.visualstudio.com/)
+- [Charm-Crypto 0.50](https://jhuisi.github.io/charm/)
+- [PBC Cryptography Library](https://crypto.stanford.edu/pbc/times.html)
+- [Python3.7](https://www.python.org/)
+
+### How to Compile and Run
+To execute ```SNELL```, you should download the script ```remote_abe.py``` from the ```proof-of-concept``` folder, and use the following syntax:
+
+```
+python3 remote_abe.py
+```
+
+In the code, you can specify the Elliptic Curve for the Scnorr Signatures, i.e., _secp256k1_, _secp384r1_ and _secp621r1_.
+
+Further, in order to run the code, please verify that you wireless network card interface is in monitor mode and supports the packet injection.
+
+```sudo python3 remote_abe.py [WIFI_INTERFACE_IN_MONITOR_MODE]```
+
 <!-- CONTRIBUTING -->
 ## Contributing
 
