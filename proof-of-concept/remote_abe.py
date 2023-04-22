@@ -1,5 +1,5 @@
 '''
-| From: SNELL: Selective Authenticated Pilot Location Disclosure for Remote ID-enabled Drones
+| Contribution: SNELL: Selective Authenticated Pilot Location Disclosure for Remote ID-enabled Drones
 | We would like to credit also: "FABEO: Fast Attribute-Based Encryption with Optimal Security"
 
 :Authors:         Anonymous Authors
@@ -31,6 +31,9 @@ import cbor2
 
 #KDF - Argon2
 import argon2, binascii
+
+import math
+import sys
 
 
 debug = True
@@ -184,26 +187,35 @@ class FABEO22CPABE(ABEnc):
         """
         Generates public key and private key for the Schnorr Signatures.
         """
-        cv      = Curve.get_curve('secp521r1')
+        cv      = Curve.get_curve('secp256k1')
         pv_key  = ECPrivateKey(secrets.randbits(32*8), cv)
         pb_key  = pv_key.get_public_key()
-        signer = ECSchnorr(hashlib.sha256, "ISO", 'DER')
-
+        signer  = ECSchnorr(hashlib.sha256, "ISO", 'ITUPLE')
         return pb_key, pv_key, signer
 
     
     def schnorr_sign(self, msg, pv_key, signer):
         sig    = signer.sign(str.encode(str(msg)), pv_key)
-        if debug: print ('[+] Signature: %r' % (sig.hex()))
-        return sig
+        if debug: 
+            print ('[+] Signature (r): ' + hex(sig[0]))
+            print ('[+] Signature (s): ' + hex(sig[1]))
+        
+        lr = int(math.ceil(len(hex(sig[0])[2:])/2))
+        ls = int(math.ceil(len(hex(sig[1])[2:])/2))
+        
+        r = sig[0].to_bytes(lr, 'big')
+        s = sig[1].to_bytes(ls, 'big')
+        return (r,s)
     
     
     def schnorr_verify(self, msg, sig, pb_key, signer):
-        v = signer.verify(str.encode(str(msg)), sig, pb_key)
+        v = signer.verify(str.encode(str(msg)), (int.from_bytes(sig[0],"big"),int.from_bytes(sig[1],"big")), pb_key)
         if(v == True):
-            print("\n[+] Successful Signature Verification")
+            if debug:
+                print("\n[+] Successful Signature Verification")
         else:
-            print("\n[x] Error in Signature Verification")
+            if debug:
+                print("\n[x] Error in Signature Verification")
         
         return v
 
@@ -225,74 +237,81 @@ def main():
 
     # Setup Phase
     (pk, mk) = fabeo22_cp.setup()
-    if debug: print("[+] CP-ABE Authority Keys:")
-    if debug: print("pk => ", pk)
-    if debug: print("mk => ", mk)
+    if debug:
+        print("[+] CP-ABE Authority Keys:")
+        print("pk => ", pk)
+        print("mk => ", mk)
 
     # Generate Public and Private Key to be used with Schnorr
     (pb_sig, pv_sig, signer) = fabeo22_cp.schnorr_setup()
-    if debug: print("\n[+] EC Schnorr Keys:")
-    if debug: print("pk => ", pb_sig)
-    if debug: print("pv => ", pv_sig)
+    if debug: 
+        print("\n[+] EC Schnorr Keys:")
+        print("pk => ", pb_sig)
+        print("pv => ", pv_sig)
 
     # Keygen Phase 
     
     # Simple Attribute List and Access Policy
-    attr_list = ['COUNTRY1', 'COUNTRY2', 'COUNTRY3'] 
-    access_policy = '(COUNTRY1 and COUNTRY2) or COUNTRY3'
-    sk = fabeo22_cp.keygen(pk, mk, attr_list)
-    if debug: print("\n[+] CP-ABE Receiver Keys:")
-    if debug: print("sk => ", sk)
             
+    attr_list = ['COUNTRY1','COUNTRY3']
+    access_policy = 'COUNTRY1 or COUNTRY2'
+    sk = fabeo22_cp.keygen(pk, mk, attr_list)
+    if debug: 
+        print("\n[+] CP-ABE Receiver Keys:")
+        print("sk => ", sk)
+                    
     ## Operator Data - 4 bytes for latitude, 4 bytes for longitude, 4 bytes for altitude
     message = b'\x02\x6b\x3f\x3e\x01\x6d\x3e\x3a\x03\x01\x01\x01'
-            
+                    
     # Generate a random nonce namely r
     r = groupObj.random(GT)
-    
+            
     # ABE Encrypt
     ct = fabeo22_cp.encrypt(pk, r, access_policy)
-    if debug: print("\n[+] Ciphertext:")
-    if debug: print("ct => ", ct)
-            
+    if debug: 
+        print("\n[+] Ciphertext:")
+        print("ct => ", ct)
+                    
     # Key Derivation Function with Argon2
     kenc = binascii.hexlify(argon2.hash_password_raw(
     time_cost=10, memory_cost=2**12, parallelism=2, hash_len=32,
     password=objectToBytes(r,groupObj), salt=b'public_salt', type=argon2.low_level.Type.ID))
-            
+                    
     # Symmetric Encryption - It encrypts the data with AES in CBC mode with a random IV and PKCS#7 padding
     symcrypt    = SymmetricCryptoAbstraction(kenc)
     menc        = symcrypt.encrypt(message)
 
     # Remote ID message
-    
+            
     ## Drone ID
     drone_id    = b'\x0a\x0b\x0e\x0d'
-    
+            
     ## Drone Data - 4 bytes for latitude, 4 bytes for longitude, 4 bytes for altitude, 4 byte for speed, 4 for Course Over Ground'
     drone_data  = b'\x02\x6b\x3f\x3e\x01\x6d\x3e\x3a\x03\x01\x01\x01\x05\x04\x04\x04\x06\x08\x08\x08'
-    
+            
     ## Emergency Code
     em_code     = b'\x64'
-    
+            
     # Create Remote ID Data Structure
     rid_msg = fabeo22_cp.make_rid(drone_id, 
-                                  drone_data, 
-                                  [ct, menc], 
-                                  (int(datetime.timestamp(datetime.now()))).to_bytes(4, 'little'), 
-                                  em_code)
-        
+                                    drone_data, 
+                                    [ct, menc], 
+                                    (int(datetime.timestamp(datetime.now()))).to_bytes(4, 'little'), 
+                                    em_code)
+
     # Sign the Remote ID message with Schnorr
     msg_sig = fabeo22_cp.schnorr_sign(rid_msg, pv_sig, signer)
 
     # Final Message (TX)
     rid_msg['sig'] = msg_sig
-    
-    if debug: print("\n[+] Remote ID Message:")
-    if debug: print(rid_msg)
             
+    if debug: 
+        print("\n[+] Remote ID Message:")
+        print(rid_msg)
+                    
     ## Encode the Remote ID Message by using CBOR
     rid_cbor_snd = cbor2.dumps(rid_msg, datetime_as_timestamp=True, value_sharing=False, canonical=False).hex()
+            
 
     # Boradcast the Wi-Fi frame
     # Please put the network card in Monitor Mode and execute the script as superuser --> sudo pyhton3 remote_abe.py
@@ -302,34 +321,35 @@ def main():
         frame = RadioTap() / Dot11(type=2, subtype=0, addr1="ff:ff:ff:ff:ff:ff", addr2="00:11:22:33:44:55", addr3="ff:ff:ff:ff:ff:ff") / ssap/payload
         sendp(frame, iface="wlan0", count=1, inter=1)
 
-    
+            
     # Receiver Side
-    
+            
     ## Load the received Frame (in this script, we are using the rid_cbor_snd, but in real application you should parse the received packet)
     rid_decoded = cbor2.loads(bytes.fromhex(rid_cbor_snd))
-    
+            
     ## Verify Message Signature with Schnorr
     keys_to_exclude = set(('sig',))
     rid_msg_rec = {k:v for k,v in rid_decoded.items() if k not in keys_to_exclude}
-    msg_ver = fabeo22_cp.schnorr_verify(rid_msg_rec, bytes(rid_decoded['sig']), pb_sig, signer)
+    msg_ver = fabeo22_cp.schnorr_verify(rid_msg_rec, rid_decoded['sig'], pb_sig, signer)
 
     # ABE and Symmetric Decryption
     if (msg_ver == True):
-        ctdec = fabeo22_cp.decrypt(rid_decoded['gc'][0], sk)
+            ctdec = fabeo22_cp.decrypt(rid_decoded['gc'][0], sk)
 
-        kdec = binascii.hexlify(argon2.hash_password_raw(
-        time_cost=10, memory_cost=2**12, parallelism=2, hash_len=32,
-        password=objectToBytes(ctdec,groupObj), salt=b'public_salt', type=argon2.low_level.Type.ID))
+            kdec = binascii.hexlify(argon2.hash_password_raw(
+            time_cost=10, memory_cost=2**12, parallelism=2, hash_len=32,
+            password=objectToBytes(ctdec,groupObj), salt=b'public_salt', type=argon2.low_level.Type.ID))
 
-        symcrypt_dec = SymmetricCryptoAbstraction(kdec)
-        mdec = symcrypt_dec.decrypt(rid_decoded['gc'][1])
-        assert mdec == message, "Failed Decryption!!!"
+            symcrypt_dec = SymmetricCryptoAbstraction(kdec)
+            mdec = symcrypt_dec.decrypt(rid_decoded['gc'][1])
+            assert mdec == message, "Failed Decryption!!!"
 
-        if debug: print("\n[+] Successful Decryption!")
-        if debug: print("\n[+] Data Operator:" + mdec.hex())
-    else:
-            print("You are not Authorized to Decrypt the Data!")
+            if debug: 
+                print("\n[+] Successful Decryption!")
+                print("\n[+] Data Operator:" + mdec.hex())
+            else:
+                if debug:
+                    print("You are not Authorized to Decrypt the Data!")
 
 if __name__ == "__main__":
-    debug = True
     main()
