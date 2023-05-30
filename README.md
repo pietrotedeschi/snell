@@ -4,7 +4,7 @@
 
 Remote Identification (RID) regulations recently emitted throughout the world are forcing commercial drones to broadcast wirelessly the location of the pilot in clear-text. However, in many use-cases, the plain-text availability of such information leads to privacy issues, allowing the extraction of sensitive information about the pilot, as well as confidential details about the business the drone is used for. In this paper, we propose SNELL, a RID-compliant solution for selective authenticated operator location disclosure. Through SNELL, a drone can disclose encrypted information about the operator location. At the same time, thanks to the smart integration of Ciphertext-Policy Attribute-Based Encryption (CP-ABE) techniques, the information about the pilot location can be decrypted only by receivers with a set of attributes satisfying an access control policy chosen by the drone at run-time. Thanks to an extensive experimental assessment carried out on a real drone (Holybro X500), we demonstrated that SNELL can fulfill all the requirements imposed by RID in terms of messages generation time and size, while also requiring negligible energy toll on RID-compliant drones.
 
-The contribution is submitted to The Annual Computer Security Applications Conference (ACSAC) 2023.
+The contribution is submitted to the Annual Computer Security Applications Conference (ACSAC) 2023.
 
 ### Prerequisites
 
@@ -38,7 +38,7 @@ To execute ```SNELL```, you should download the script ```remote_abe.py``` from 
 python3 remote_abe.py
 ```
 
-In the code, you can specify the Elliptic Curve for the Scnorr Signatures, i.e., _secp256k1_, _secp384r1_ and _secp621r1_.
+In the code, you can specify the Elliptic Curve for the Scnorr Signatures, i.e., _secp256k1_, _secp384r1_ and _secp521r1_.
 
 Further, in order to run the code, please verify that you wireless network card interface is in monitor mode and supports the packet injection.
 
