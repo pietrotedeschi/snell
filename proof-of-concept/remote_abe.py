@@ -3,8 +3,6 @@
 | We would like to credit also: "FABEO: Fast Attribute-Based Encryption with Optimal Security"
 
 :Authors:         Anonymous Authors
-:Date:            05/2023
-:Conference:      ACSAC 2023
 '''
 
 from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2, GT, pair
