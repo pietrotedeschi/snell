@@ -61,7 +61,7 @@ Don't forget to give the project a star! Thanks again!
 ### Formal Security Verification with ProVerif
 The security properties of ```SNELL``` have been verified formally and experimentally by using the open-source tool ProVerif 2.04pl1, demonstrating enhanced security protection with respect to state-of-the-art approaches.
 
-In order to test the security properties, download the file ```test.pv``` from the ```proverif``` folder and run: ```./proverif snell.pv | grep "RESULT"```.
+In order to test the security properties, download the file ```test.pv``` from the ```proverif``` folder and run: ```./proverif test.pv | grep "RESULT"```.
 
 ![proverif_result](img/snell.png?raw=true "ProVerif")
 
