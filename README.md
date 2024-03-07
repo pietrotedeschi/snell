@@ -74,8 +74,7 @@ Distributed under the GNU General Public License v3.0 License. See  [LICENSE](./
 
 <!-- CONTACT -->
 ## Contact
-
-Anonymous Authors
+Pietro Tedeschi
 
 <!-- DISCLAIMER -->
 ## Disclaimer
